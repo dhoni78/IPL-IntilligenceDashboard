@@ -104,16 +104,17 @@ def load_data():
 @st.cache_resource
 def load_models():
     base = os.path.join(BASE_DIR, "models")
-    with open(f"{base}/gb_model.pkl","rb")       as f: gb  = pickle.load(f)
-    with open(f"{base}/team_win_pct.pkl","rb")   as f: twp = pickle.load(f)
-    with open(f"{base}/team_form.pkl","rb")      as f: tf  = pickle.load(f)
-    with open(f"{base}/venue_avg.pkl","rb")      as f: va  = pickle.load(f)
-    with open(f"{base}/h2h_data.pkl","rb")       as f: h2h = pickle.load(f)
-    with open(f"{base}/season_form.pkl","rb")    as f: sf  = pickle.load(f)
-    return gb, twp, tf, va, h2h, sf
+    with open(f"{base}/gb_model_v2.pkl","rb")       as f: gb  = pickle.load(f)
+    with open(f"{base}/team_win_pct_v2.pkl","rb")   as f: twp = pickle.load(f)
+    with open(f"{base}/team_form_v2.pkl","rb")      as f: tf  = pickle.load(f)
+    with open(f"{base}/venue_avg_v2.pkl","rb")      as f: va  = pickle.load(f)
+    with open(f"{base}/h2h_data_v2.pkl","rb")       as f: h2h = pickle.load(f)
+    with open(f"{base}/venue_team_stats_v2.pkl","rb") as f: vts = pickle.load(f)
+    with open(f"{base}/team_encoder.pkl","rb")      as f: le  = pickle.load(f)
+    return gb, twp, tf, va, h2h, vts, le
 
 matches, bat, bowl, team_stats, venue_stats, live_2026, deliveries, mapping = load_data()
-gb_model, team_win_pct, team_form, venue_avg, h2h_data, season_form = load_models()
+gb_model, team_win_pct, team_form, venue_avg, h2h_data, venue_team_stats, team_encoder = load_models()
 
 ALL_TEAMS = CURRENT_VIEW
 ALL_VENUES = sorted(matches["venue"].unique())
@@ -134,21 +135,22 @@ def get_h2h_pct(t1, t2):
     wins = h2h_data[key]["wins"].get(t1, 0)
     return round(wins / h2h_data[key]["total"] * 100, 2)
 
-def build_pred_features(t1, t2, venue, toss_winner, toss_decision, season=2024):
+def build_pred_features(t1, t2, venue, toss_winner, toss_decision):
+    vt1_key = f"{venue}_{t1}"
+    vt2_key = f"{venue}_{t2}"
     return pd.DataFrame([{
-        "team1_win_pct":   team_win_pct.get(t1, 50),
-        "team2_win_pct":   team_win_pct.get(t2, 50),
-        "team1_form":      team_form.get(t1, 50),
-        "team2_form":      team_form.get(t2, 50),
-        "win_pct_diff":    team_win_pct.get(t1,50) - team_win_pct.get(t2,50),
-        "form_diff":       team_form.get(t1,50) - team_form.get(t2,50),
-        "toss_team1":      int(toss_winner == t1),
-        "toss_field":      int(toss_decision == "field"),
-        "venue_avg_score": venue_avg.get(venue, 160),
-        "season":          season,
-        "h2h_pct":         get_h2h_pct(t1, t2),
-        "season_form_t1":  season_form.get((t1, season), 50),
-        "season_form_t2":  season_form.get((t2, season), 50),
+        "team1_enc":       team_encoder.transform([t1])[0],
+        "team2_enc":       team_encoder.transform([t2])[0],
+        "t1_wp":           team_win_pct.get(t1, 50),
+        "t2_wp":           team_win_pct.get(t2, 50),
+        "t1_form":         team_form.get(t1, 50),
+        "t2_form":         team_form.get(t2, 50),
+        "h2h_wp":          get_h2h_pct(t1, t2),
+        "vt1_wp":          venue_team_stats.get(vt1_key, 50),
+        "vt2_wp":          venue_team_stats.get(vt2_key, 50),
+        "v_avg":           venue_avg.get(venue, 165),
+        "toss_t1":         int(toss_winner == t1),
+        "bat_first":       int((toss_winner == t1 and toss_decision == "bat") or (toss_winner == t2 and toss_decision == "field"))
     }])
 
 def color_team(team):
@@ -601,7 +603,7 @@ elif page == "🤖 Match Predictor":
         season = st.selectbox("📅 Season", [2024, 2025, 2026])
 
     if st.button("🔮 Predict Match Outcome", use_container_width=True):
-        X_pred = build_pred_features(team1, team2, venue, toss_winner, toss_decision, season)
+        X_pred = build_pred_features(team1, team2, venue, toss_winner, toss_decision)
         prob   = gb_model.predict_proba(X_pred)[0]
         t1_prob = prob[1] * 100
         t2_prob = prob[0] * 100

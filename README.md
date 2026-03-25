@@ -1,6 +1,6 @@
-# 🏏 IPL Match Intelligence Dashboard
+# 🏏 IPL Intelligence Dashboard
 
-A full end-to-end IPL analytics & prediction system built with Python + Streamlit.
+**IPL Intelligence Dashboard** is a season-aware analytics platform for the Indian Premier League (2008–2026). It features dynamic player-team mapping, premium career timelines, a multi-layer team system (active vs. analysis), and match predictors. Built with Streamlit, it offers deep-dive insights into stats and squads.
 
 ## 📁 Project Structure
 ```
@@ -39,12 +39,14 @@ streamlit run app.py
 6. **Playing XI** — Recommender based on impact scores
 7. **IPL 2026 Live** — Manual entry tracker + points table
 
-## 📈 Model Performance
-| Model | Accuracy |
-|---|---|
-| Logistic Regression | 56.9% |
-| Random Forest | 51.4% |
-| Gradient Boosting | 58.3% |
+## 📈 Model Performance (Improved)
+| Model | Accuracy (Validated) | Type |
+|---|---|---|
+| Gradient Boosting (v1) | 58.3%* | Baseline |
+| XGBoost (v2) | **54.27%** | **Chronological (Honest)** |
+
+> [!NOTE]
+> *v1 accuracy was reported on the full dataset. v2 uses a strict chronological split (Training: 2008-2023, Testing: 2024) to ensure real-world predictive power without data leakage.
 
 ## 🗄️ Database Tables (SQLite)
 - `matches` — 1,095 match records (2008–2024)
